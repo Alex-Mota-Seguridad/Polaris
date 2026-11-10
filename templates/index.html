@@ -1,0 +1,1315 @@
+<!DOCTYPE html>
+<html lang="es" class="h-full bg-slate-50 text-slate-900">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>POLARIS | Agregador de Noticias y Monitor de Polarización</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Google Fonts Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Newsreader:ital,opsz,wght@0,6..72,500;0,6..72,700;1,6..72,500&display=swap" rel="stylesheet">
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            serif: ['Newsreader', 'serif'],
+          },
+          colors: {
+            brand: {
+              pais: '#1e3a8a',
+              mundo: '#0284c7',
+              confidencial: '#d97706',
+              abc: '#dc2626',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    /* Estilos personalizados para animaciones y scroll */
+    .fade-in { animation: fadeIn 0.25s ease-in-out; }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+  </style>
+</head>
+<body class="min-h-full flex flex-col font-sans bg-slate-50 antialiased selection:bg-indigo-500 selection:text-white">
+
+  <!-- Encabezado Principal / Masthead -->
+  <header class="border-b border-slate-200 bg-white sticky top-0 z-30 shadow-xs backdrop-blur-md bg-white/95">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between h-18 py-3">
+        <!-- Logo y Título -->
+        <div class="flex items-center space-x-3">
+          <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-700 via-blue-600 to-sky-500 flex items-center justify-center text-white shadow-md shadow-indigo-500/20 font-black text-xl tracking-tighter">
+            P
+          </div>
+          <div>
+            <div class="flex items-center space-x-2">
+              <span class="text-xl font-extrabold tracking-tight text-slate-900">POLARIS</span>
+              <span class="text-xs px-2 py-0.5 rounded-full font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200">Monitor de Medios</span>
+            </div>
+            <p class="text-xs text-slate-500 hidden sm:block">Agregador de El Confidencial, El Mundo, El País y ABC con análisis de polarización</p>
+          </div>
+        </div>
+
+        <!-- Acciones: Actualizar y Estadísticas rápidas -->
+        <div class="flex items-center space-x-3">
+          <button id="refreshBtn" onclick="refreshFeeds()" class="inline-flex items-center px-3.5 py-2 border border-slate-200 shadow-2xs text-xs font-semibold rounded-lg text-slate-700 bg-white hover:bg-slate-50 hover:border-slate-300 transition-all focus:outline-hidden focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+            <svg id="refreshIcon" class="w-4 h-4 mr-1.5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+            </svg>
+            <span id="refreshText">Actualizar Feeds</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Barra de Navegación de Pestañas -->
+      <nav class="flex space-x-1 sm:space-x-8 -mb-px overflow-x-auto text-sm font-medium border-t border-slate-100">
+        <button onclick="switchTab('feed')" id="tabBtn-feed" class="tab-btn py-3 px-2 border-b-2 font-semibold border-indigo-600 text-indigo-600 whitespace-nowrap flex items-center space-x-2">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z"></path></svg>
+          <span>Feed de Noticias</span>
+          <span id="badgeNewsCount" class="ml-1 text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-medium">0</span>
+        </button>
+
+        <button onclick="switchTab('topics')" id="tabBtn-topics" class="tab-btn py-3 px-2 border-b-2 font-medium border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300 whitespace-nowrap flex items-center space-x-2">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+          <span>Comparador de Temas</span>
+          <span id="badgeTopicsCount" class="ml-1 text-xs bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded-full font-medium">0</span>
+        </button>
+
+        <button onclick="switchTab('radar')" id="tabBtn-radar" class="tab-btn py-3 px-2 border-b-2 font-medium border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300 whitespace-nowrap flex items-center space-x-2">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z"></path></svg>
+          <span>Radar de Medios & Estadísticas</span>
+        </button>
+
+        <button onclick="switchTab('live')" id="tabBtn-live" class="tab-btn py-3 px-2 border-b-2 font-medium border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300 whitespace-nowrap flex items-center space-x-2">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+          <span>Analizador en Vivo</span>
+        </button>
+      </nav>
+    </div>
+  </header>
+
+  <!-- CONTENIDO PRINCIPAL -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-1 w-full">
+
+    <!-- ==================== PESTAÑA 1: FEED DE NOTICIAS ==================== -->
+    <section id="tab-feed" class="fade-in">
+      <!-- Barra de Filtros y Búsqueda -->
+      <div class="bg-white rounded-xl border border-slate-200 p-4 mb-6 shadow-xs space-y-4">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <!-- Selector de Medios (Botones toggles) -->
+          <div class="flex flex-wrap items-center gap-2">
+            <span class="text-xs font-bold text-slate-400 uppercase tracking-wider mr-1">Diarios:</span>
+            
+            <button onclick="toggleSource('El País')" id="filter-El País" class="source-filter-btn px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all flex items-center space-x-1.5 bg-blue-50 text-blue-800 border-blue-300 shadow-2xs">
+              <span class="w-2 h-2 rounded-full bg-blue-600"></span>
+              <span>El País</span>
+            </button>
+
+            <button onclick="toggleSource('El Confidencial')" id="filter-El Confidencial" class="source-filter-btn px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all flex items-center space-x-1.5 bg-amber-50 text-amber-800 border-amber-300 shadow-2xs">
+              <span class="w-2 h-2 rounded-full bg-amber-600"></span>
+              <span>El Confidencial</span>
+            </button>
+
+            <button onclick="toggleSource('El Mundo')" id="filter-El Mundo" class="source-filter-btn px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all flex items-center space-x-1.5 bg-sky-50 text-sky-800 border-sky-300 shadow-2xs">
+              <span class="w-2 h-2 rounded-full bg-sky-600"></span>
+              <span>El Mundo</span>
+            </button>
+
+            <button onclick="toggleSource('ABC')" id="filter-ABC" class="source-filter-btn px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all flex items-center space-x-1.5 bg-red-50 text-red-800 border-red-300 shadow-2xs">
+              <span class="w-2 h-2 rounded-full bg-red-600"></span>
+              <span>ABC</span>
+            </button>
+
+            <button onclick="resetSourceFilters()" class="text-xs text-slate-400 hover:text-slate-600 underline ml-1">Ver todos</button>
+          </div>
+
+          <!-- Búsqueda en tiempo real -->
+          <div class="relative w-full md:w-72">
+            <input type="text" id="searchInput" oninput="debounceSearch()" placeholder="Buscar en titulares o temas..." class="w-full pl-9 pr-4 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-hidden focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all text-slate-800 placeholder-slate-400">
+            <svg class="w-4 h-4 text-slate-400 absolute left-3 top-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+          </div>
+        </div>
+
+        <div class="flex flex-wrap items-center justify-between border-t border-slate-100 pt-3 gap-3 text-xs">
+          <!-- Filtro de nivel de polarización -->
+          <div class="flex items-center space-x-2">
+            <span class="font-bold text-slate-400 uppercase tracking-wider">Nivel de Polarización:</span>
+            <div class="inline-flex rounded-lg border border-slate-200 bg-slate-50 p-0.5">
+              <button onclick="setLevelFilter('all')" id="level-all" class="level-btn px-2.5 py-1 rounded-md font-medium text-slate-800 bg-white shadow-2xs">Todos</button>
+              <button onclick="setLevelFilter('baja')" id="level-baja" class="level-btn px-2.5 py-1 rounded-md font-medium text-slate-600 hover:text-slate-900">Baja (0-25)</button>
+              <button onclick="setLevelFilter('moderada')" id="level-moderada" class="level-btn px-2.5 py-1 rounded-md font-medium text-slate-600 hover:text-slate-900">Moderada (26-50)</button>
+              <button onclick="setLevelFilter('alta')" id="level-alta" class="level-btn px-2.5 py-1 rounded-md font-medium text-slate-600 hover:text-slate-900">Alta (51-74)</button>
+              <button onclick="setLevelFilter('muy-alta')" id="level-muy-alta" class="level-btn px-2.5 py-1 rounded-md font-medium text-slate-600 hover:text-slate-900">Muy Alta (75+)</button>
+            </div>
+          </div>
+
+          <!-- Selector de Orden -->
+          <div class="flex items-center space-x-2">
+            <span class="text-slate-500 font-medium">Ordenar:</span>
+            <select id="sortSelect" onchange="applySort()" class="bg-white border border-slate-200 text-slate-700 rounded-md py-1 px-2.5 focus:outline-hidden focus:ring-1 focus:ring-indigo-500 text-xs font-medium">
+              <option value="latest">Más recientes</option>
+              <option value="pol_desc">Mayor polarización</option>
+              <option value="pol_asc">Menor polarización (neutras)</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- Leyenda rápida del índice de polarización -->
+      <div class="flex flex-wrap items-center justify-between text-xs text-slate-500 bg-indigo-50/50 border border-indigo-100 rounded-lg px-4 py-2.5 mb-6">
+        <div class="flex items-center space-x-1">
+          <svg class="w-4 h-4 text-indigo-600 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+          <span class="font-semibold text-slate-700">Índice de Polarización:</span>
+          <span>Mide la adjetivación emocional, belicismo discursivo, framing partidista y sesgo de titular.</span>
+        </div>
+        <div class="flex items-center space-x-4 mt-2 sm:mt-0 font-medium">
+          <span class="flex items-center space-x-1"><span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span><span>0-25 Baja (Neutro)</span></span>
+          <span class="flex items-center space-x-1"><span class="w-2.5 h-2.5 rounded-full bg-sky-500"></span><span>26-50 Moderada</span></span>
+          <span class="flex items-center space-x-1"><span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span><span>51-74 Alta</span></span>
+          <span class="flex items-center space-x-1"><span class="w-2.5 h-2.5 rounded-full bg-rose-500"></span><span>75+ Muy Alta</span></span>
+        </div>
+      </div>
+
+      <!-- Grid de Noticias -->
+      <div id="newsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+        <!-- Renderizado dinámico vía JavaScript -->
+      </div>
+
+      <!-- Estado vacío o cargando -->
+      <div id="newsEmpty" class="hidden text-center py-16 bg-white rounded-xl border border-slate-200">
+        <svg class="w-12 h-12 text-slate-300 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+        <h3 class="text-base font-semibold text-slate-800">No se encontraron noticias</h3>
+        <p class="text-xs text-slate-500 mt-1">Prueba a relajar los filtros de búsqueda o seleccionar otros diarios.</p>
+      </div>
+
+      <!-- Botón Cargar Más -->
+      <div id="loadMoreContainer" class="text-center mt-8 hidden">
+        <button onclick="loadMoreNews()" class="px-6 py-2.5 bg-white border border-slate-200 rounded-lg text-xs font-semibold text-slate-700 hover:bg-slate-50 shadow-2xs transition-all">
+          Cargar más noticias
+        </button>
+      </div>
+    </section>
+
+    <!-- ==================== PESTAÑA 2: COMPARADOR DE TEMAS ==================== -->
+    <section id="tab-topics" class="hidden fade-in space-y-6">
+      <div class="bg-white rounded-xl border border-slate-200 p-5 shadow-xs">
+        <div class="flex items-start justify-between">
+          <div>
+            <h2 class="text-lg font-bold text-slate-900">Cobertura Cruzada y Brecha de Polarización</h2>
+            <p class="text-xs text-slate-500 mt-1 max-w-3xl">
+              Agrupamiento de noticias sobre el mismo acontecimiento cubierto en simultáneo por El País, El Mundo, El Confidencial o ABC. Permite contrastar de un vistazo cómo titula cada cabecera y la disparidad de enfoques editoriales.
+            </p>
+          </div>
+          <span class="text-xs bg-indigo-50 text-indigo-700 px-3 py-1 rounded-full font-semibold border border-indigo-200">
+            Comparador Lado a Lado
+          </span>
+        </div>
+      </div>
+
+      <div id="topicsContainer" class="space-y-6">
+        <!-- Renderizado dinámico de temas agrupados -->
+      </div>
+    </section>
+
+    <!-- ==================== PESTAÑA 3: RADAR DE MEDIOS & ESTADÍSTICAS ==================== -->
+    <section id="tab-radar" class="hidden fade-in space-y-6">
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Brújula Editorial y Espectro Político -->
+        <div class="lg:col-span-2 bg-white rounded-xl border border-slate-200 p-5 shadow-xs">
+          <div class="flex items-center justify-between mb-4">
+            <div>
+              <h3 class="text-base font-bold text-slate-900">Brújula Editorial vs Polarización Media</h3>
+              <p class="text-xs text-slate-500">Posicionamiento en el eje izquierda-derecha comparado con el índice de polarización medio hoy</p>
+            </div>
+            <span class="text-xs text-slate-400 font-medium">Actualizado en tiempo real</span>
+          </div>
+
+          <div class="relative h-72">
+            <canvas id="compassChart"></canvas>
+          </div>
+
+          <!-- Explicación de los 4 diarios -->
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4 pt-4 border-t border-slate-100 text-xs">
+            <div class="p-2.5 rounded-lg bg-blue-50/60 border border-blue-100">
+              <span class="font-bold text-blue-900 block">El País</span>
+              <span class="text-blue-700 text-[11px] font-medium">Centro-izquierda (-0.45)</span>
+              <p class="text-[10px] text-blue-600/80 mt-1">Socialdemócrata, europeísta y progresista.</p>
+            </div>
+            <div class="p-2.5 rounded-lg bg-amber-50/60 border border-amber-100">
+              <span class="font-bold text-amber-900 block">El Confidencial</span>
+              <span class="text-amber-700 text-[11px] font-medium">Centro / Liberal (+0.08)</span>
+              <p class="text-[10px] text-amber-600/80 mt-1">Investigación, economía y fiscalización pública.</p>
+            </div>
+            <div class="p-2.5 rounded-lg bg-sky-50/60 border border-sky-100">
+              <span class="font-bold text-sky-900 block">El Mundo</span>
+              <span class="text-sky-700 text-[11px] font-medium">Centro-derecha (+0.45)</span>
+              <p class="text-[10px] text-sky-600/80 mt-1">Liberal-conservador, constitucionalista.</p>
+            </div>
+            <div class="p-2.5 rounded-lg bg-red-50/60 border border-red-100">
+              <span class="font-bold text-red-900 block">ABC</span>
+              <span class="text-red-700 text-[11px] font-medium">Derecha (+0.70)</span>
+              <p class="text-[10px] text-red-600/80 mt-1">Conservador monárquico institucional.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Palabras y Marcadores Polarizantes del Día -->
+        <div class="bg-white rounded-xl border border-slate-200 p-5 shadow-xs">
+          <h3 class="text-base font-bold text-slate-900 mb-1">Términos Polarizantes de la Jornada</h3>
+          <p class="text-xs text-slate-500 mb-4">Palabras con mayor carga emocional o confrontación detectadas en las portadas</p>
+          
+          <div id="topKeywordsList" class="space-y-2.5 custom-scrollbar max-h-72 overflow-y-auto pr-1">
+            <!-- Renderizado dinámico -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Gráficos de Distribución de Tono por Medio -->
+      <div class="bg-white rounded-xl border border-slate-200 p-5 shadow-xs">
+        <h3 class="text-base font-bold text-slate-900 mb-1">Distribución de Tono y Polarización por Cabecera</h3>
+        <p class="text-xs text-slate-500 mb-4">Proporción de noticias en cada nivel: Baja (neutra), Moderada, Alta y Muy Alta</p>
+        <div class="relative h-64">
+          <canvas id="distributionChart"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== PESTAÑA 4: ANALIZADOR EN VIVO ==================== -->
+    <section id="tab-live" class="hidden fade-in max-w-3xl mx-auto space-y-6">
+      <div class="bg-white rounded-xl border border-slate-200 p-6 shadow-xs">
+        <h2 class="text-lg font-bold text-slate-900 mb-1">Laboratorio de Análisis de Polarización</h2>
+        <p class="text-xs text-slate-500 mb-5">
+          Escribe o pega cualquier titular, declaración o frase periodística para evaluar en tiempo real su nivel de polarización, adjetivación y marcadores de encuadre.
+        </p>
+
+        <div class="space-y-4">
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 uppercase mb-1">Titular o texto a evaluar:</label>
+            <textarea id="liveInputText" rows="3" class="w-full p-3 text-sm border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-hidden" placeholder="Ejemplo: Sánchez consuma su cesión a los separatistas con una amnistía vergonzosa que dinamita el Estado de derecho..."></textarea>
+          </div>
+
+          <div class="flex items-center justify-between">
+            <div class="flex items-center space-x-2">
+              <span class="text-xs text-slate-500 font-medium">Asignar contexto de medio (opcional):</span>
+              <select id="liveInputSource" class="text-xs bg-slate-50 border border-slate-200 rounded-md py-1 px-2 text-slate-700">
+                <option value="">Medio general</option>
+                <option value="El País">El País</option>
+                <option value="El Mundo">El Mundo</option>
+                <option value="El Confidencial">El Confidencial</option>
+                <option value="ABC">ABC</option>
+              </select>
+            </div>
+
+            <button onclick="runLiveAnalysis()" class="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-lg shadow-sm transition-all flex items-center space-x-1.5">
+              <span>Analizar Ahora</span>
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+            </button>
+          </div>
+
+          <!-- Sugerencias de ejemplo rápido -->
+          <div class="pt-2 flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
+            <span class="font-medium">Probar ejemplo:</span>
+            <button onclick="fillExample(1)" class="px-2 py-0.5 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-700">Noticia Fáctica</button>
+            <button onclick="fillExample(2)" class="px-2 py-0.5 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-700">Titular de Alarma / Catástrofe</button>
+            <button onclick="fillExample(3)" class="px-2 py-0.5 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-700">Polarización Ideológica Fuerte</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Resultado del análisis en vivo -->
+      <div id="liveResultContainer" class="hidden bg-white rounded-xl border border-slate-200 p-6 shadow-xs fade-in space-y-5">
+        <!-- Encabezado de resultado con Medidor -->
+        <div class="flex items-center justify-between pb-4 border-b border-slate-100">
+          <div>
+            <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Resultado del Análisis</span>
+            <h3 id="liveResultLevel" class="text-xl font-extrabold text-slate-900 mt-0.5">Moderada</h3>
+            <p id="liveResultBias" class="text-xs text-slate-500">Encuadre detectado</p>
+          </div>
+
+          <!-- Score Circle Badge -->
+          <div class="flex items-center space-x-3">
+            <div id="liveScoreBadge" class="w-16 h-16 rounded-2xl flex flex-col items-center justify-center font-black text-2xl shadow-inner bg-amber-50 text-amber-700 border border-amber-200">
+              <span id="liveScoreNum">45</span>
+              <span class="text-[9px] font-bold uppercase tracking-wider text-amber-600/70 -mt-1">/100</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Barra de progreso -->
+        <div>
+          <div class="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden">
+            <div id="liveProgressBar" class="h-2.5 rounded-full bg-amber-500 transition-all duration-500" style="width: 45%"></div>
+          </div>
+          <div class="flex justify-between text-[10px] text-slate-400 mt-1 font-medium">
+            <span>0 Neutro fáctico</span>
+            <span>50 Moderado</span>
+            <span>100 Beligerante</span>
+          </div>
+        </div>
+
+        <!-- Explicación -->
+        <div class="p-4 rounded-lg bg-slate-50 border border-slate-200/80">
+          <h4 class="text-xs font-bold text-slate-800 uppercase tracking-wider mb-1">Diagnóstico Editorial</h4>
+          <p id="liveResultExplanation" class="text-xs text-slate-700 leading-relaxed"></p>
+        </div>
+
+        <!-- Términos detectados -->
+        <div>
+          <h4 class="text-xs font-bold text-slate-800 uppercase tracking-wider mb-2">Marcadores Léxicos Identificados</h4>
+          <div id="liveMarkersList" class="flex flex-wrap gap-2">
+            <!-- Badges -->
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ==================== MODAL DE ANÁLISIS DETALLADO ==================== -->
+  <div id="detailModal" class="fixed inset-0 z-50 hidden overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-xl w-full p-6 shadow-2xl border border-slate-200 relative fade-in max-h-[90vh] overflow-y-auto custom-scrollbar">
+      <!-- Botón Cerrar -->
+      <button onclick="closeDetailModal()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+      </button>
+
+      <!-- Cabecera del modal -->
+      <div class="flex items-center space-x-2.5 mb-3">
+        <span id="modalSourceBadge" class="text-xs font-bold px-2.5 py-1 rounded-md">El País</span>
+        <span id="modalCategory" class="text-xs text-slate-400 font-medium">España</span>
+        <span id="modalTime" class="text-xs text-slate-400 font-medium">• hace 2 horas</span>
+      </div>
+
+      <h3 id="modalTitle" class="text-lg font-bold font-serif text-slate-900 leading-snug mb-3">
+        Titular de la noticia
+      </h3>
+
+      <p id="modalDesc" class="text-xs text-slate-600 leading-relaxed mb-5"></p>
+
+      <!-- Panel de polarización -->
+      <div class="bg-slate-50 border border-slate-200 rounded-xl p-4 mb-5 space-y-3">
+        <div class="flex items-center justify-between">
+          <div>
+            <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Índice de Polarización</span>
+            <div class="flex items-center space-x-2 mt-0.5">
+              <span id="modalLevelBadge" class="text-xs font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800">Baja (0-25)</span>
+              <span id="modalFramingBias" class="text-xs text-slate-600 font-medium">Neutro</span>
+            </div>
+          </div>
+          <div class="text-right">
+            <span id="modalScoreNum" class="text-2xl font-black text-slate-800">12</span>
+            <span class="text-xs text-slate-400 font-bold">/100</span>
+          </div>
+        </div>
+
+        <div class="w-full bg-slate-200 rounded-full h-2 overflow-hidden">
+          <div id="modalProgressBar" class="h-2 rounded-full bg-emerald-500" style="width: 12%"></div>
+        </div>
+
+        <p id="modalExplanation" class="text-xs text-slate-700 leading-relaxed pt-1"></p>
+      </div>
+
+      <!-- Términos detectados -->
+      <div class="mb-5">
+        <h4 class="text-xs font-bold text-slate-800 uppercase tracking-wider mb-2">Marcadores identificados</h4>
+        <div id="modalMarkersList" class="flex flex-wrap gap-1.5 text-xs">
+          <!-- Lista -->
+        </div>
+      </div>
+
+      <!-- Pie del modal: Enlace al medio y botón de lectura -->
+      <div class="pt-4 border-t border-slate-100 flex items-center justify-between gap-3">
+        <div class="text-xs text-slate-500">
+          Orientación histórica: <strong id="modalSpectrumLabel" class="text-slate-700">Centro-izquierda</strong>
+        </div>
+        <div class="flex items-center space-x-2">
+          <button id="modalReaderBtn" onclick="openReaderFromModal()" class="inline-flex items-center px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-lg shadow-sm transition-all space-x-1.5">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg>
+            <span>Leer en la app</span>
+          </button>
+          <a id="modalArticleLink" href="#" target="_blank" rel="noopener noreferrer" class="inline-flex items-center px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-lg shadow-2xs transition-all space-x-1.5">
+            <span>Web oficial</span>
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== MODAL DE MODO LECTURA INTEGRADO ==================== -->
+  <div id="readerModal" class="fixed inset-0 z-50 hidden overflow-y-auto bg-slate-900/70 backdrop-blur-sm flex justify-center p-2 sm:p-6">
+    <div id="readerCard" class="bg-white rounded-2xl max-w-3xl w-full shadow-2xl border border-slate-200 relative fade-in flex flex-col max-h-[94vh] overflow-hidden">
+      <!-- Barra superior de herramientas del lector -->
+      <div id="readerToolbar" class="px-5 py-3 border-b border-slate-200 bg-slate-50/90 backdrop-blur-md flex items-center justify-between z-10 shrink-0">
+        <div class="flex items-center space-x-2">
+          <span id="readerSourceBadge" class="text-xs font-bold px-2.5 py-1 rounded-md bg-blue-100 text-blue-800">El País</span>
+          <span id="readerReadingTime" class="text-xs text-slate-500 font-medium hidden sm:inline">• 3 min de lectura</span>
+        </div>
+
+        <!-- Controles: tamaño de texto, tema claro/sepia/oscuro, cerrar -->
+        <div class="flex items-center space-x-3">
+          <!-- Control de fuente -->
+          <div class="flex items-center border border-slate-200 rounded-lg bg-white overflow-hidden text-xs">
+            <button onclick="changeFontSize(-1)" class="px-2 py-1 text-slate-600 hover:bg-slate-100 font-bold" title="Reducir tamaño de letra">A-</button>
+            <button onclick="changeFontSize(1)" class="px-2 py-1 text-slate-600 hover:bg-slate-100 font-bold border-l border-slate-200" title="Aumentar tamaño de letra">A+</button>
+          </div>
+
+          <!-- Selector de tema -->
+          <div class="flex items-center space-x-1.5">
+            <button onclick="setReaderTheme('light')" class="w-5 h-5 rounded-full bg-white border border-slate-300 shadow-2xs hover:scale-110 transition-transform" title="Tema Blanco"></button>
+            <button onclick="setReaderTheme('sepia')" class="w-5 h-5 rounded-full bg-[#fbf0d9] border border-amber-300 shadow-2xs hover:scale-110 transition-transform" title="Tema Sepia"></button>
+            <button onclick="setReaderTheme('dark')" class="w-5 h-5 rounded-full bg-slate-900 border border-slate-700 shadow-2xs hover:scale-110 transition-transform" title="Tema Oscuro"></button>
+          </div>
+
+          <!-- Cerrar -->
+          <button onclick="closeReaderModal()" class="text-slate-400 hover:text-slate-700 p-1.5 rounded-lg hover:bg-slate-200 transition-colors">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Contenedor scrollable del artículo -->
+      <div id="readerScrollArea" class="p-6 sm:p-10 overflow-y-auto custom-scrollbar flex-1 space-y-6">
+        <!-- Loading state -->
+        <div id="readerLoading" class="text-center py-20">
+          <svg class="w-10 h-10 text-indigo-600 animate-spin mx-auto mb-3" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg>
+          <p class="text-sm font-semibold text-slate-700">Cargando artículo en Modo Lectura...</p>
+          <p class="text-xs text-slate-400 mt-1">Limpiando publicidad y extrayendo contenido</p>
+        </div>
+
+        <!-- Contenido del artículo -->
+        <div id="readerContent" class="hidden space-y-6">
+          <div class="space-y-3">
+            <div class="flex items-center justify-between text-xs text-slate-500">
+              <span id="readerCategoryAuthor" class="font-medium"></span>
+              <span id="readerDate" class="text-slate-400"></span>
+            </div>
+
+            <h1 id="readerTitle" class="text-2xl sm:text-3xl font-serif font-extrabold text-slate-900 leading-tight"></h1>
+
+            <p id="readerLead" class="text-base sm:text-lg font-serif italic text-slate-600 leading-relaxed border-l-2 border-indigo-500 pl-4 py-0.5"></p>
+
+            <!-- Barra de polarización integrada en el lector -->
+            <div id="readerPolBadge" class="p-3 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between text-xs"></div>
+          </div>
+
+          <!-- Banner si requiere suscripción oficial -->
+          <div id="readerPaywallNotice" class="hidden p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs space-y-2">
+            <div class="flex items-center space-x-2 font-bold text-amber-950">
+              <svg class="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+              <span>Contenido exclusivo para suscriptores</span>
+            </div>
+            <p class="text-amber-800 leading-relaxed">
+              Este artículo incluye tramos reservados a los abonados de <span id="readerPaywallSource" class="font-bold"></span>. A continuación se presenta el extracto público y los párrafos libres disponibles. Para acceder a la versión completa sin restricciones, puedes entrar en el diario con tu suscripción.
+            </p>
+          </div>
+
+          <!-- Imagen principal -->
+          <div id="readerImageContainer" class="hidden space-y-2">
+            <img id="readerImage" src="" alt="" class="w-full rounded-xl object-cover max-h-96 shadow-xs">
+            <p id="readerImageCaption" class="text-xs text-slate-400 italic text-center"></p>
+          </div>
+
+          <!-- Párrafos del artículo -->
+          <div id="readerBody" class="space-y-4 font-serif text-slate-800 leading-relaxed text-base sm:text-lg">
+          </div>
+
+          <!-- Pie de artículo -->
+          <div class="pt-8 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs">
+            <div class="text-slate-500">
+              Fuente original: <span id="readerFooterSource" class="font-bold text-slate-700"></span>
+            </div>
+            <div class="flex items-center space-x-3">
+              <a id="readerExternalLink" href="#" target="_blank" rel="noopener noreferrer" class="px-4 py-2 bg-slate-900 text-white rounded-lg font-semibold hover:bg-slate-800 transition-colors flex items-center space-x-1.5">
+                <span>Abrir en web del diario</span>
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
+              </a>
+              <button onclick="closeReaderModal()" class="px-4 py-2 bg-slate-100 text-slate-700 rounded-lg font-semibold hover:bg-slate-200 transition-colors">
+                Cerrar
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- JAVASCRIPT PRINCIPAL -->
+  <script>
+    // Estado global de la aplicación
+    const state = {
+      activeTab: 'feed',
+      sources: ['El País', 'El Confidencial', 'El Mundo', 'ABC'], // Activos por defecto
+      levelFilter: 'all',
+      query: '',
+      sort: 'latest',
+      offset: 0,
+      limit: 30,
+      allArticles: [],
+      statsData: null,
+      topicsData: [],
+      chartInstance: null,
+      distributionChartInstance: null,
+      searchTimeout: null
+    };
+
+    // Al cargar la página
+    document.addEventListener('DOMContentLoaded', () => {
+      fetchNews(true);
+      fetchStats();
+      fetchTopics();
+    });
+
+    // Control de pestañas
+    function switchTab(tabName) {
+      state.activeTab = tabName;
+      ['feed', 'topics', 'radar', 'live'].forEach(t => {
+        const el = document.getElementById(`tab-${t}`);
+        const btn = document.getElementById(`tabBtn-${t}`);
+        if (t === tabName) {
+          el.classList.remove('hidden');
+          btn.className = 'tab-btn py-3 px-2 border-b-2 font-semibold border-indigo-600 text-indigo-600 whitespace-nowrap flex items-center space-x-2';
+        } else {
+          el.classList.add('hidden');
+          btn.className = 'tab-btn py-3 px-2 border-b-2 font-medium border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300 whitespace-nowrap flex items-center space-x-2';
+        }
+      });
+
+      if (tabName === 'radar' && state.statsData) {
+        renderCharts(state.statsData);
+      }
+    }
+
+    // Toggle de periódicos
+    function toggleSource(sourceName) {
+      const idx = state.sources.indexOf(sourceName);
+      if (idx > -1) {
+        if (state.sources.length === 1) return; // Al menos un diario debe quedar
+        state.sources.splice(idx, 1);
+      } else {
+        state.sources.push(sourceName);
+      }
+      updateSourceButtonStyles();
+      fetchNews(true);
+    }
+
+    function resetSourceFilters() {
+      state.sources = ['El País', 'El Confidencial', 'El Mundo', 'ABC'];
+      updateSourceButtonStyles();
+      fetchNews(true);
+    }
+
+    function updateSourceButtonStyles() {
+      const all = ['El País', 'El Confidencial', 'El Mundo', 'ABC'];
+      all.forEach(s => {
+        const btn = document.getElementById(`filter-${s}`);
+        const active = state.sources.includes(s);
+        if (active) {
+          btn.classList.remove('opacity-40', 'grayscale', 'bg-white', 'text-slate-500');
+        } else {
+          btn.classList.add('opacity-40', 'grayscale', 'bg-white', 'text-slate-500');
+        }
+      });
+    }
+
+    // Filtro de nivel
+    function setLevelFilter(lvl) {
+      state.levelFilter = lvl;
+      ['all', 'baja', 'moderada', 'alta', 'muy-alta'].forEach(l => {
+        const b = document.getElementById(`level-${l}`);
+        if (l === lvl) {
+          b.className = 'level-btn px-2.5 py-1 rounded-md font-semibold text-indigo-900 bg-white shadow-2xs';
+        } else {
+          b.className = 'level-btn px-2.5 py-1 rounded-md font-medium text-slate-600 hover:text-slate-900';
+        }
+      });
+      fetchNews(true);
+    }
+
+    // Búsqueda con rebote
+    function debounceSearch() {
+      clearTimeout(state.searchTimeout);
+      state.searchTimeout = setTimeout(() => {
+        state.query = document.getElementById('searchInput').value.trim();
+        fetchNews(true);
+      }, 250);
+    }
+
+    function applySort() {
+      state.sort = document.getElementById('sortSelect').value;
+      fetchNews(true);
+    }
+
+    // Descarga de noticias con filtros
+    async function fetchNews(reset = false) {
+      if (reset) {
+        state.offset = 0;
+      }
+
+      const params = new URLSearchParams({
+        source: state.sources.join(','),
+        level: state.levelFilter,
+        q: state.query,
+        sort: state.sort,
+        limit: state.limit,
+        offset: state.offset
+      });
+
+      try {
+        const res = await fetch(`/api/news?${params}`);
+        const data = await res.json();
+        
+        if (reset) {
+          state.allArticles = data.articles;
+        } else {
+          state.allArticles = state.allArticles.concat(data.articles);
+        }
+
+        document.getElementById('badgeNewsCount').innerText = data.total;
+        renderNewsGrid(state.allArticles);
+
+        // Mostrar / ocultar botón "cargar más"
+        const loadMore = document.getElementById('loadMoreContainer');
+        if (state.allArticles.length < data.total) {
+          loadMore.classList.remove('hidden');
+        } else {
+          loadMore.classList.add('hidden');
+        }
+
+      } catch (err) {
+        console.error('Error al cargar noticias:', err);
+      }
+    }
+
+    function loadMoreNews() {
+      state.offset += state.limit;
+      fetchNews(false);
+    }
+
+    // Render del grid de noticias
+    function renderNewsGrid(articles) {
+      const grid = document.getElementById('newsGrid');
+      const empty = document.getElementById('newsEmpty');
+
+      if (!articles || articles.length === 0) {
+        grid.innerHTML = '';
+        empty.classList.remove('hidden');
+        return;
+      }
+      empty.classList.add('hidden');
+
+      grid.innerHTML = articles.map(art => {
+        const pol = art.polarization;
+        const prof = pol.source_profile || {};
+        
+        // Estilos según nivel de polarización
+        let badgeBg = 'bg-emerald-50 text-emerald-800 border-emerald-200';
+        let barColor = 'bg-emerald-500';
+        if (pol.level_slug === 'moderada') {
+          badgeBg = 'bg-sky-50 text-sky-800 border-sky-200';
+          barColor = 'bg-sky-500';
+        } else if (pol.level_slug === 'alta') {
+          badgeBg = 'bg-amber-50 text-amber-800 border-amber-200';
+          barColor = 'bg-amber-500';
+        } else if (pol.level_slug === 'muy-alta') {
+          badgeBg = 'bg-rose-50 text-rose-800 border-rose-200';
+          barColor = 'bg-rose-500';
+        }
+
+        // Color de la etiqueta del medio
+        let srcColorClass = 'text-blue-700 bg-blue-50 border-blue-200';
+        if (art.source === 'El Mundo') srcColorClass = 'text-sky-700 bg-sky-50 border-sky-200';
+        if (art.source === 'El Confidencial') srcColorClass = 'text-amber-800 bg-amber-50 border-amber-200';
+        if (art.source === 'ABC') srcColorClass = 'text-red-700 bg-red-50 border-red-200';
+
+        const imageHtml = art.image_url ? `
+          <div class="h-44 w-full overflow-hidden bg-slate-100 relative">
+            <img src="${art.image_url}" alt="" class="w-full h-full object-cover group-hover:scale-103 transition-transform duration-300" onerror="this.parentElement.style.display='none'">
+            <div class="absolute top-2 left-2">
+              <span class="text-[11px] font-bold px-2 py-0.5 rounded-md shadow-2xs backdrop-blur-md bg-white/90 ${srcColorClass} border">
+                ${art.source}
+              </span>
+            </div>
+          </div>
+        ` : `
+          <div class="p-3 pb-0 flex items-center justify-between">
+            <span class="text-[11px] font-bold px-2 py-0.5 rounded-md ${srcColorClass} border">
+              ${art.source}
+            </span>
+            <span class="text-[11px] text-slate-400 font-medium">${art.relative_time}</span>
+          </div>
+        `;
+
+        return `
+          <article class="bg-white rounded-xl border border-slate-200 shadow-2xs hover:shadow-md transition-all flex flex-col justify-between overflow-hidden group">
+            <div>
+              ${imageHtml}
+              
+              <div class="p-4">
+                <div class="flex items-center justify-between text-[11px] text-slate-400 mb-1.5 font-medium">
+                  <span>${art.category || 'General'}</span>
+                  <span>${art.relative_time}</span>
+                </div>
+
+                <h3 class="font-serif font-bold text-slate-900 text-base leading-snug group-hover:text-indigo-600 transition-colors line-clamp-3">
+                  <a href="${art.link}" target="_blank" rel="noopener noreferrer">${art.title}</a>
+                </h3>
+
+                ${art.description ? `
+                  <p class="text-xs text-slate-500 mt-2 line-clamp-2 leading-relaxed">
+                    ${art.description}
+                  </p>
+                ` : ''}
+              </div>
+            </div>
+
+            <!-- Barra inferior con medidor de polarización y botón de Lectura rápida -->
+            <div class="px-4 py-3 bg-slate-50/80 border-t border-slate-100 flex items-center justify-between">
+              <button onclick='openDetailModal(${JSON.stringify(art).replace(/'/g, "&apos;")})' class="flex items-center space-x-2 text-left hover:opacity-85 transition-opacity">
+                <span class="text-[11px] font-bold px-2 py-0.5 rounded-full border ${badgeBg}">
+                  Pol. ${pol.score}/100 • ${pol.level}
+                </span>
+              </button>
+
+              <div class="flex items-center space-x-2">
+                <button onclick='openReaderModal(${JSON.stringify(art).replace(/'/g, "&apos;")})' class="inline-flex items-center space-x-1 px-2.5 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-semibold shadow-2xs transition-colors" title="Leer artículo directamente en la app">
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg>
+                  <span>Leer</span>
+                </button>
+
+                <a href="${art.link}" target="_blank" rel="noopener noreferrer" class="text-slate-400 hover:text-slate-700 p-1 rounded-md" title="Abrir en ${art.source}">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
+                </a>
+              </div>
+            </div>
+          </article>
+        `;
+      }).join('');
+    }
+
+    // Carga de temas y cobertura cruzada
+    async function fetchTopics() {
+      try {
+        const res = await fetch('/api/topics');
+        const data = await res.json();
+        state.topicsData = data.clusters || [];
+        document.getElementById('badgeTopicsCount').innerText = data.total_clusters || 0;
+        renderTopics(state.topicsData);
+      } catch (err) {
+        console.error('Error al cargar temas:', err);
+      }
+    }
+
+    function renderTopics(clusters) {
+      const container = document.getElementById('topicsContainer');
+      if (!clusters || clusters.length === 0) {
+        container.innerHTML = `
+          <div class="bg-white p-8 rounded-xl border border-slate-200 text-center text-slate-500 text-xs">
+            No se han detectado temas compartidos en este momento.
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = clusters.map((c, idx) => {
+        let gapBadge = 'bg-emerald-50 text-emerald-800 border-emerald-200';
+        if (c.gap_level === 'moderada') gapBadge = 'bg-amber-50 text-amber-800 border-amber-200';
+        if (c.gap_level === 'alta') gapBadge = 'bg-rose-50 text-rose-800 border-rose-200';
+
+        const articlesCards = c.articles.map(a => {
+          const pol = a.polarization;
+          let pBadge = 'bg-emerald-50 text-emerald-700 border-emerald-200';
+          if (pol.level_slug === 'moderada') pBadge = 'bg-sky-50 text-sky-700 border-sky-200';
+          if (pol.level_slug === 'alta') pBadge = 'bg-amber-50 text-amber-700 border-amber-200';
+          if (pol.level_slug === 'muy-alta') pBadge = 'bg-rose-50 text-rose-700 border-rose-200';
+
+          return `
+            <div class="p-3.5 bg-slate-50/70 hover:bg-slate-50 border border-slate-200/80 rounded-xl transition-all flex flex-col justify-between">
+              <div>
+                <div class="flex items-center justify-between mb-2">
+                  <span class="text-xs font-bold px-2 py-0.5 rounded-md bg-white border border-slate-200 text-slate-800 shadow-2xs">
+                    ${a.source}
+                  </span>
+                  <span class="text-[11px] font-semibold px-2 py-0.5 rounded-full border ${pBadge}">
+                    Pol: ${pol.score}/100
+                  </span>
+                </div>
+                <h4 class="font-serif font-bold text-slate-900 text-xs leading-snug line-clamp-3">
+                  <a href="${a.link}" target="_blank" rel="noopener noreferrer" class="hover:underline">${a.title}</a>
+                </h4>
+              </div>
+
+              <div class="mt-3 pt-2 border-t border-slate-200/60 flex items-center justify-between text-[11px] text-slate-500">
+                <span class="truncate max-w-[140px]">${pol.framing_bias}</span>
+                <button onclick='openDetailModal(${JSON.stringify(a).replace(/'/g, "&apos;")})' class="text-indigo-600 font-semibold hover:underline">Ver</button>
+              </div>
+            </div>
+          `;
+        }).join('');
+
+        return `
+          <div class="bg-white rounded-xl border border-slate-200 p-5 shadow-xs space-y-4">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
+              <div>
+                <div class="flex items-center space-x-2">
+                  <span class="text-xs font-extrabold uppercase tracking-wider text-indigo-600">Tema #${idx+1}</span>
+                  <span class="text-xs text-slate-400">• ${c.sources_count} diarios (${c.sources.join(', ')})</span>
+                </div>
+                <h3 class="font-serif font-bold text-slate-900 text-base mt-0.5">${c.title}</h3>
+              </div>
+
+              <!-- Brecha de polarización -->
+              <div class="flex items-center space-x-2">
+                <div class="text-right">
+                  <div class="text-[10px] font-bold text-slate-400 uppercase">Brecha de Polarización</div>
+                  <div class="text-xs font-bold text-slate-800">Δ ${c.polarization_gap} puntos (Media: ${c.avg_polarization})</div>
+                </div>
+                <span class="text-xs px-2.5 py-1 rounded-full font-bold border ${gapBadge}">
+                  ${c.gap_level.toUpperCase()}
+                </span>
+              </div>
+            </div>
+
+            <!-- Diagnóstico de contraste -->
+            <p class="text-xs text-slate-600 italic bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200/50">
+              💡 ${c.assessment}
+            </p>
+
+            <!-- Cuadrícula de diarios comparados -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-${Math.min(c.articles.length, 4)} gap-3">
+              ${articlesCards}
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // Carga de estadísticas y render de gráficos
+    async function fetchStats() {
+      try {
+        const res = await fetch('/api/stats');
+        const data = await res.json();
+        state.statsData = data;
+        renderTopKeywords(data.top_polarized_terms || []);
+        if (state.activeTab === 'radar') {
+          renderCharts(data);
+        }
+      } catch (err) {
+        console.error('Error al cargar estadísticas:', err);
+      }
+    }
+
+    function renderTopKeywords(terms) {
+      const container = document.getElementById('topKeywordsList');
+      if (!terms || terms.length === 0) {
+        container.innerHTML = '<p class="text-xs text-slate-400">Sin datos aún.</p>';
+        return;
+      }
+
+      container.innerHTML = terms.map(t => `
+        <div class="flex items-center justify-between p-2 rounded-lg bg-slate-50 border border-slate-100 text-xs">
+          <span class="font-medium text-slate-700 capitalize">"${t.term}"</span>
+          <span class="px-2 py-0.5 rounded-full font-bold bg-indigo-50 text-indigo-700 text-[11px]">${t.count} apariciones</span>
+        </div>
+      `).join('');
+    }
+
+    function renderCharts(stats) {
+      if (!stats || !stats.sources) return;
+
+      const sourcesList = ['El País', 'El Confidencial', 'El Mundo', 'ABC'];
+      const avgScores = sourcesList.map(s => stats.sources[s]?.avg_score || 0);
+      const spectrumPos = sourcesList.map(s => stats.sources[s]?.profile?.spectrum_pos || 0);
+
+      // 1. Gráfico de Posicionamiento Editorial vs Polarización
+      const ctxCompass = document.getElementById('compassChart');
+      if (ctxCompass) {
+        if (state.chartInstance) state.chartInstance.destroy();
+        
+        const scatterData = sourcesList.map(s => ({
+          x: stats.sources[s]?.profile?.spectrum_pos || 0,
+          y: stats.sources[s]?.avg_score || 0,
+          sourceName: s
+        }));
+
+        state.chartInstance = new Chart(ctxCompass, {
+          type: 'bubble',
+          data: {
+            datasets: [{
+              label: 'Medios',
+              data: scatterData.map(d => ({ x: d.x, y: d.y, r: 14 })),
+              backgroundColor: ['#1e3a8a', '#d97706', '#0284c7', '#dc2626'],
+              borderColor: '#ffffff',
+              borderWidth: 2
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: { display: false },
+              tooltip: {
+                callbacks: {
+                  label: function(ctx) {
+                    const item = scatterData[ctx.dataIndex];
+                    return `${item.sourceName}: Polarización media ${item.y}/100 (Eje ideológico: ${item.x})`;
+                  }
+                }
+              }
+            },
+            scales: {
+              x: {
+                min: -1.0,
+                max: 1.0,
+                title: { display: true, text: '← Izquierda | Eje Ideológico Editorial | Derecha →', font: { size: 11, weight: 'bold' } },
+                grid: { color: '#f1f5f9' }
+              },
+              y: {
+                min: 0,
+                max: 60,
+                title: { display: true, text: 'Índice de Polarización Medio (0 a 100)', font: { size: 11, weight: 'bold' } },
+                grid: { color: '#f1f5f9' }
+              }
+            }
+          }
+        });
+      }
+
+      // 2. Gráfico de distribución de tono
+      const ctxDist = document.getElementById('distributionChart');
+      if (ctxDist) {
+        if (state.distributionChartInstance) state.distributionChartInstance.destroy();
+
+        const distBaja = sourcesList.map(s => stats.sources[s]?.distribution?.baja || 0);
+        const distMod = sourcesList.map(s => stats.sources[s]?.distribution?.moderada || 0);
+        const distAlta = sourcesList.map(s => stats.sources[s]?.distribution?.alta || 0);
+        const distMuyAlta = sourcesList.map(s => stats.sources[s]?.distribution?.muy_alta || 0);
+
+        state.distributionChartInstance = new Chart(ctxDist, {
+          type: 'bar',
+          data: {
+            labels: sourcesList,
+            datasets: [
+              { label: 'Baja / Neutra', data: distBaja, backgroundColor: '#10b981' },
+              { label: 'Moderada', data: distMod, backgroundColor: '#38bdf8' },
+              { label: 'Alta', data: distAlta, backgroundColor: '#f59e0b' },
+              { label: 'Muy Alta', data: distMuyAlta, backgroundColor: '#f43f5e' }
+            ]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: { position: 'top', labels: { boxWidth: 12, font: { size: 11 } } }
+            },
+            scales: {
+              x: { stacked: true, grid: { display: false } },
+              y: { stacked: true, title: { display: true, text: 'Número de noticias', font: { size: 11 } } }
+            }
+          }
+        });
+      }
+    }
+
+    // Actualización manual forzada de feeds
+    async function refreshFeeds() {
+      const btn = document.getElementById('refreshBtn');
+      const icon = document.getElementById('refreshIcon');
+      const txt = document.getElementById('refreshText');
+
+      icon.classList.add('animate-spin');
+      txt.innerText = 'Actualizando...';
+      btn.disabled = true;
+
+      try {
+        const res = await fetch('/api/refresh', { method: 'POST' });
+        const data = await res.json();
+        await fetchNews(true);
+        await fetchStats();
+        await fetchTopics();
+        txt.innerText = '¡Actualizado!';
+        setTimeout(() => {
+          txt.innerText = 'Actualizar Feeds';
+          icon.classList.remove('animate-spin');
+          btn.disabled = false;
+        }, 1200);
+      } catch (err) {
+        console.error('Error al actualizar:', err);
+        txt.innerText = 'Error al actualizar';
+        icon.classList.remove('animate-spin');
+        btn.disabled = false;
+      }
+    }
+
+    // Modal de detalle
+    function openDetailModal(art) {
+      state.currentModalArticle = art;
+      const pol = art.polarization;
+      const prof = pol.source_profile || {};
+
+      document.getElementById('modalSourceBadge').innerText = art.source;
+      document.getElementById('modalSourceBadge').className = `text-xs font-bold px-2.5 py-1 rounded-md ${prof.badge_class || 'bg-slate-100 text-slate-800'}`;
+      document.getElementById('modalCategory').innerText = art.category || 'General';
+      document.getElementById('modalTime').innerText = `• ${art.relative_time}`;
+      document.getElementById('modalTitle').innerText = art.title;
+      document.getElementById('modalDesc').innerText = art.description || 'Sin descripción adicional.';
+      
+      document.getElementById('modalLevelBadge').innerText = `${pol.level} (${pol.score}/100)`;
+      document.getElementById('modalFramingBias').innerText = pol.framing_bias;
+      document.getElementById('modalScoreNum').innerText = pol.score;
+      document.getElementById('modalProgressBar').style.width = `${pol.score}%`;
+      document.getElementById('modalProgressBar').className = `h-2 rounded-full ${pol.badge_color === 'rose' ? 'bg-rose-500' : pol.badge_color === 'amber' ? 'bg-amber-500' : pol.badge_color === 'sky' ? 'bg-sky-500' : 'bg-emerald-500'}`;
+      
+      document.getElementById('modalExplanation').innerText = pol.explanation;
+      document.getElementById('modalSpectrumLabel').innerText = prof.spectrum_label || 'Prensa general';
+      document.getElementById('modalArticleLink').href = art.link;
+
+      // Marcadores
+      const markersList = document.getElementById('modalMarkersList');
+      if (pol.detected_markers && pol.detected_markers.length > 0) {
+        markersList.innerHTML = pol.detected_markers.map(m => `
+          <span class="px-2.5 py-1 rounded-md bg-white border border-slate-200 font-semibold text-slate-700 shadow-2xs">
+            "${m.term}" <span class="text-[10px] text-slate-400 font-normal">(${m.category_label})</span>
+          </span>
+        `).join('');
+      } else {
+        markersList.innerHTML = '<span class="text-xs text-slate-400 italic">No se detectaron adjetivos o términos polarizantes directos. Registro fáctico.</span>';
+      }
+
+      document.getElementById('detailModal').classList.remove('hidden');
+    }
+
+    function closeDetailModal() {
+      document.getElementById('detailModal').classList.add('hidden');
+    }
+
+    // ==================== MODO LECTURA INTEGRADO ====================
+    let currentReaderFontSize = 17;
+    let currentReaderTheme = 'light';
+
+    function openReaderFromModal() {
+      if (state.currentModalArticle) {
+        openReaderModal(state.currentModalArticle);
+      }
+    }
+
+    async function openReaderModal(art) {
+      closeDetailModal();
+      const modal = document.getElementById('readerModal');
+      const loading = document.getElementById('readerLoading');
+      const content = document.getElementById('readerContent');
+
+      modal.classList.remove('hidden');
+      loading.classList.remove('hidden');
+      content.classList.add('hidden');
+      document.getElementById('readerScrollArea').scrollTop = 0;
+
+      const pol = art.polarization || {};
+      const prof = pol.source_profile || {};
+
+      document.getElementById('readerSourceBadge').innerText = art.source;
+      document.getElementById('readerSourceBadge').className = `text-xs font-bold px-2.5 py-1 rounded-md ${prof.badge_class || 'bg-slate-100 text-slate-800'}`;
+      document.getElementById('readerTitle').innerText = art.title;
+      document.getElementById('readerCategoryAuthor').innerText = `${art.source} • ${art.category || 'Actualidad'} • ${art.author || art.source}`;
+      document.getElementById('readerDate').innerText = art.relative_time || '';
+      document.getElementById('readerFooterSource').innerText = art.source;
+      document.getElementById('readerExternalLink').href = art.link;
+
+      // Píldora de polarización en el lector
+      const polBadgeEl = document.getElementById('readerPolBadge');
+      let badgeBg = pol.badge_color === 'rose' ? 'bg-rose-50 text-rose-800 border-rose-200' : pol.badge_color === 'amber' ? 'bg-amber-50 text-amber-800 border-amber-200' : pol.badge_color === 'sky' ? 'bg-sky-50 text-sky-800 border-sky-200' : 'bg-emerald-50 text-emerald-800 border-emerald-200';
+      polBadgeEl.innerHTML = `
+        <div class="flex items-center space-x-2">
+          <span class="font-bold px-2.5 py-0.5 rounded-full border ${badgeBg}">Polarización: ${pol.score}/100 • ${pol.level}</span>
+          <span class="text-slate-500 hidden sm:inline">• ${pol.framing_bias}</span>
+        </div>
+        <span class="text-slate-400 text-[11px]">${prof.spectrum_label || ''}</span>
+      `;
+
+      try {
+        const res = await fetch(`/api/reader?url=${encodeURIComponent(art.link)}`);
+        const data = await res.json();
+
+        // Entradilla
+        const lead = data.lead || art.description || '';
+        const leadEl = document.getElementById('readerLead');
+        if (lead) {
+          leadEl.innerText = lead;
+          leadEl.classList.remove('hidden');
+        } else {
+          leadEl.classList.add('hidden');
+        }
+
+        // Tiempo de lectura
+        document.getElementById('readerReadingTime').innerText = `• ${data.reading_time_min || 2} min de lectura (${data.word_count || 300} palabras)`;
+
+        // Aviso de muro de pago si está marcado
+        const paywallNotice = document.getElementById('readerPaywallNotice');
+        if (data.is_paywalled) {
+          paywallNotice.classList.remove('hidden');
+          document.getElementById('readerPaywallSource').innerText = art.source;
+        } else {
+          paywallNotice.classList.add('hidden');
+        }
+
+        // Imagen principal
+        const imgUrl = data.image_url || art.image_url;
+        const imgContainer = document.getElementById('readerImageContainer');
+        const imgEl = document.getElementById('readerImage');
+        const captionEl = document.getElementById('readerImageCaption');
+        if (imgUrl) {
+          imgEl.src = imgUrl;
+          captionEl.innerText = data.image_caption || '';
+          imgContainer.classList.remove('hidden');
+        } else {
+          imgContainer.classList.add('hidden');
+        }
+
+        // Párrafos del cuerpo
+        const bodyEl = document.getElementById('readerBody');
+        if (data.paragraphs && data.paragraphs.length > 0) {
+          bodyEl.innerHTML = data.paragraphs.map(p => `
+            <p class="leading-relaxed mb-4">${p}</p>
+          `).join('');
+        } else if (art.description) {
+          bodyEl.innerHTML = `<p class="leading-relaxed mb-4">${art.description}</p>`;
+        } else {
+          bodyEl.innerHTML = `<p class="italic text-slate-400">Texto no disponible directamente. Puedes consultarlo en la web del diario.</p>`;
+        }
+
+        bodyEl.style.fontSize = `${currentReaderFontSize}px`;
+
+        loading.classList.add('hidden');
+        content.classList.remove('hidden');
+
+      } catch (err) {
+        console.error('Error al cargar contenido en modo lectura:', err);
+        loading.classList.add('hidden');
+        content.classList.remove('hidden');
+        document.getElementById('readerBody').innerHTML = `
+          <p class="text-slate-600">${art.description || 'No se pudo cargar el texto completo directamente.'}</p>
+          <div class="mt-4 p-4 rounded-xl bg-slate-100 text-xs">
+            Puedes leer este artículo directamente en la web de <a href="${art.link}" target="_blank" class="font-bold text-indigo-600 underline">${art.source}</a>.
+          </div>
+        `;
+      }
+    }
+
+    function closeReaderModal() {
+      document.getElementById('readerModal').classList.add('hidden');
+    }
+
+    function changeFontSize(delta) {
+      currentReaderFontSize = Math.min(Math.max(currentReaderFontSize + (delta * 1.5), 14), 26);
+      const bodyEl = document.getElementById('readerBody');
+      if (bodyEl) {
+        bodyEl.style.fontSize = `${currentReaderFontSize}px`;
+      }
+    }
+
+    function setReaderTheme(theme) {
+      currentReaderTheme = theme;
+      const card = document.getElementById('readerCard');
+      const toolbar = document.getElementById('readerToolbar');
+      const body = document.getElementById('readerBody');
+      const title = document.getElementById('readerTitle');
+      const lead = document.getElementById('readerLead');
+
+      if (theme === 'sepia') {
+        card.className = 'bg-[#fbf0d9] text-[#433422] rounded-2xl max-w-3xl w-full shadow-2xl border border-amber-200 relative fade-in flex flex-col max-h-[94vh] overflow-hidden';
+        toolbar.className = 'px-5 py-3 border-b border-amber-200 bg-[#f4e4c1]/90 backdrop-blur-md flex items-center justify-between z-10 shrink-0';
+        body.className = 'space-y-4 font-serif text-[#433422] leading-relaxed';
+        title.className = 'text-2xl sm:text-3xl font-serif font-extrabold text-[#2b2115] leading-tight';
+        lead.className = 'text-base sm:text-lg font-serif italic text-[#5c4730] leading-relaxed border-l-2 border-amber-600 pl-4 py-0.5';
+      } else if (theme === 'dark') {
+        card.className = 'bg-slate-900 text-slate-100 rounded-2xl max-w-3xl w-full shadow-2xl border border-slate-800 relative fade-in flex flex-col max-h-[94vh] overflow-hidden';
+        toolbar.className = 'px-5 py-3 border-b border-slate-800 bg-slate-950/90 backdrop-blur-md flex items-center justify-between z-10 shrink-0';
+        body.className = 'space-y-4 font-serif text-slate-300 leading-relaxed';
+        title.className = 'text-2xl sm:text-3xl font-serif font-extrabold text-white leading-tight';
+        lead.className = 'text-base sm:text-lg font-serif italic text-slate-400 leading-relaxed border-l-2 border-indigo-400 pl-4 py-0.5';
+      } else { // light
+        card.className = 'bg-white text-slate-900 rounded-2xl max-w-3xl w-full shadow-2xl border border-slate-200 relative fade-in flex flex-col max-h-[94vh] overflow-hidden';
+        toolbar.className = 'px-5 py-3 border-b border-slate-200 bg-slate-50/90 backdrop-blur-md flex items-center justify-between z-10 shrink-0';
+        body.className = 'space-y-4 font-serif text-slate-800 leading-relaxed';
+        title.className = 'text-2xl sm:text-3xl font-serif font-extrabold text-slate-900 leading-tight';
+        lead.className = 'text-base sm:text-lg font-serif italic text-slate-600 leading-relaxed border-l-2 border-indigo-500 pl-4 py-0.5';
+      }
+    }
+
+    // Analizador en vivo
+    async function runLiveAnalysis() {
+      const text = document.getElementById('liveInputText').value.trim();
+      const source = document.getElementById('liveInputSource').value;
+      if (!text) return;
+
+      try {
+        const res = await fetch('/api/analyze', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text, source })
+        });
+        const data = await res.json();
+        const a = data.analysis;
+
+        const resContainer = document.getElementById('liveResultContainer');
+        resContainer.classList.remove('hidden');
+
+        document.getElementById('liveResultLevel').innerText = a.level;
+        document.getElementById('liveResultBias').innerText = a.framing_bias;
+        document.getElementById('liveScoreNum').innerText = a.score;
+        document.getElementById('liveProgressBar').style.width = `${a.score}%`;
+        
+        let barColor = 'bg-emerald-500';
+        let badgeColor = 'bg-emerald-50 text-emerald-700 border-emerald-200';
+        if (a.level_slug === 'moderada') { barColor = 'bg-sky-500'; badgeColor = 'bg-sky-50 text-sky-700 border-sky-200'; }
+        if (a.level_slug === 'alta') { barColor = 'bg-amber-500'; badgeColor = 'bg-amber-50 text-amber-700 border-amber-200'; }
+        if (a.level_slug === 'muy-alta') { barColor = 'bg-rose-500'; badgeColor = 'bg-rose-50 text-rose-700 border-rose-200'; }
+
+        document.getElementById('liveProgressBar').className = `h-2.5 rounded-full ${barColor} transition-all duration-500`;
+        document.getElementById('liveScoreBadge').className = `w-16 h-16 rounded-2xl flex flex-col items-center justify-center font-black text-2xl shadow-inner border ${badgeColor}`;
+        document.getElementById('liveResultExplanation').innerText = a.explanation;
+
+        const markersList = document.getElementById('liveMarkersList');
+        if (a.detected_markers && a.detected_markers.length > 0) {
+          markersList.innerHTML = a.detected_markers.map(m => `
+            <span class="px-2.5 py-1 rounded-md bg-white border border-slate-200 font-semibold text-xs text-slate-800 shadow-2xs">
+              "${m.term}" <span class="text-[10px] text-slate-400 font-normal">(${m.category_label})</span>
+            </span>
+          `).join('');
+        } else {
+          markersList.innerHTML = '<span class="text-xs text-slate-400 italic">No se detectaron términos polarizantes. Registro neutro.</span>';
+        }
+
+      } catch (err) {
+        console.error('Error en análisis:', err);
+      }
+    }
+
+    function fillExample(num) {
+      const input = document.getElementById('liveInputText');
+      if (num === 1) {
+        input.value = "El Instituto Nacional de Estadística confirma que la inflación se sitúa en el 1,8% tras la moderación de los carburantes.";
+      } else if (num === 2) {
+        input.value = "¡Alarma roja y caos total! El devastador temporal desata el pánico en las carreteras mientras el Gobierno agoniza sin presupuestos.";
+      } else if (num === 3) {
+        input.value = "Sánchez consuma su vergonzosa sumisión ante el chantaje separatista con un asalto total a las instituciones que dinamita el Estado de derecho.";
+      }
+      runLiveAnalysis();
+    }
+  </script>
+</body>
+</html>
